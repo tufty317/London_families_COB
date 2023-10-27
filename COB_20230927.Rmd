@@ -1,0 +1,668 @@
+---
+title: "Birth by Mothers' Country of Birth, 26/09/2023"
+output: 
+  html_document:
+    css: Wil_style.css
+    theme: default
+    toc: TRUE
+    toc_float: TRUE
+    number_sections: TRUE
+always_allow_html: yes
+---
+
+```{r setup1, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(zoo)
+library(data.table)
+library(tidyverse)
+library(gglaplot)
+library(ggplot2)
+library(scales)
+library(readxl)
+library(knitr)
+library(sf)
+library(sp)
+library(kableExtra)
+library(magick)
+
+library(plotly)    
+library(RColorBrewer)
+library(htmltools)
+library(prettydoc)
+library(rmdformats)
+
+# data_dir <- 'C:/Migration/Migration_R/DATA/Domestic/copied_from_Qdrive_20220614/'
+
+data_dir <- 'C:/Families/Data/'
+chart_dir <- 'C:/Families/Charts/'
+
+# Disable scientific notation
+options(scipen=999)
+
+```
+
+```{r setup_population, include=FALSE}
+
+boroughcodes <- read.csv("C:/Migration/Migration_R/DATA/Domestic/InnerLondon.csv") %>%   
+  data.frame
+
+# glimpse(boroughcodes)
+
+# Load data on births by COB
+
+input_COB_birthsData <- read.csv("C:/births_by_mothers_country_of_birth/data/births_by_mothers_country_of_birth_2001_to_2022.csv") %>%   
+  data.frame
+
+# Merge with Zone codes 
+
+COB_birthsData_Zone <-input_COB_birthsData %>%
+  left_join(boroughcodes, by=c("gss_code"="BoroughCode"))%>% 
+#  mutate(across(c('Year'), substr, 2, nchar(Year))) %>%
+  mutate(Inner_factor = as.factor(Inner)) %>%
+  mutate(Inner_factor= recode(Inner, "1"="Inner", "0"="Outer", "2" = "Other")) %>%
+  data.frame()
+
+```
+
+
+```{r fig_London_pop_line_Africa_abs, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of COB Africa over time for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_Africa_abs <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = overseas_mothers_africa, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(overseas_mothers_africa, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Number of children born to mothers with COB Africa, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_Africa_abs, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Number of children born to mothers with COB Africa, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+```{r fig_London_pop_line_Africa_percent, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of COB Africa over time as % of total, for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_Africa_Percent <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  mutate(PercentAfrica = overseas_mothers_africa*100/total_births_all) %>%
+  ggplot(aes(x = year, y = PercentAfrica, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Percentage :", round(PercentAfrica, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "% of children born to mothers with COB Africa, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_Africa_Percent, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>% of children born to mothers with COB Africa, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+
+```{r fig_London_pop_line_Africa_ind, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot indexed population of COB Asia over time for each London borough
+  
+COB_birthsData_Africa_ind_Zone <- COB_birthsData_Zone %>%
+  group_by(gss_code) %>% 
+  mutate(Indexed_COB_births_Africa = (overseas_mothers_africa/first(overseas_mothers_africa))*100) %>%
+  data.frame()
+  
+COB_lines_Africa_ind <- COB_birthsData_Africa_ind_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = Indexed_COB_births_Africa, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(Indexed_COB_births_Africa, digits = 1))
+  )) +
+  theme_gla() +
+  geom_hline(yintercept = 100) +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+  scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Indexed number of children born to mothers with COB Africa, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_Africa_ind, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Indexed number of children born to mothers with COB Africa, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+```
+
+
+
+```{r fig_London_pop_line_Asia_abs, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of COB Asia over time for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_Asia_abs <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = overseas_mothers_asia, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(overseas_mothers_asia, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Number of children born to mothers with COB Asia, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_Asia_abs, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Number of children born to mothers with COB Asia, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+
+```{r fig_London_pop_line_Asia_percent, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of COB Asia over time as % of total, for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_Asia_Percent <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  mutate(PercentAsia = overseas_mothers_asia*100/total_births_all) %>%
+  ggplot(aes(x = year, y = PercentAsia, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Percentage :", round(PercentAsia, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "% of children born to mothers with COB Asia, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_Asia_Percent, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>% of children born to mothers with COB Asia, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+
+```{r fig_London_pop_line_Asia_ind, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot indexed population of COB Asia over time for each London borough
+  
+COB_birthsData_Asia_ind_Zone <- COB_birthsData_Zone %>%
+  group_by(gss_code) %>% 
+  mutate(Indexed_COB_births_Asia = (overseas_mothers_asia/first(overseas_mothers_asia))*100) %>%
+  data.frame()
+  
+COB_lines_Asia_ind <- COB_birthsData_Asia_ind_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = Indexed_COB_births_Asia, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(Indexed_COB_births_Asia, digits = 1))
+  )) +
+  theme_gla() +
+  geom_hline(yintercept = 100) +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+  scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Indexed number of children born to mothers with COB Asia, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_Asia_ind, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Indexed number of children born to mothers with COB Asia, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+```
+
+
+
+
+```{r fig_London_pop_line_EU_abs, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of COB EU over time for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_EU_abs <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = overseas_mothers_total_EU, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(overseas_mothers_total_EU, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Number of children born to mothers with COB EU, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_EU_abs, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Number of children born to mothers with COB EU, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+
+```{r fig_London_pop_line_EU_percent, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of COB EU over time as % of total, for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_EU_Percent <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  mutate(PercentEU = overseas_mothers_total_EU*100/total_births_all) %>%
+  ggplot(aes(x = year, y = PercentEU, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Percentage :", round(PercentEU, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "% of children born to mothers with COB EU, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_EU_Percent, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>% of children born to mothers with COB EU, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+```{r fig_London_pop_line_EU_ind, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot indexed population of COB EU over time for each London borough
+  
+COB_birthsData_EU_ind_Zone <- COB_birthsData_Zone %>%
+  group_by(gss_code) %>% 
+  mutate(Indexed_COB_births_total_EU = (overseas_mothers_total_EU/first(overseas_mothers_total_EU))*100) %>%
+  data.frame()
+  
+COB_lines_EU_ind <- COB_birthsData_EU_ind_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = Indexed_COB_births_total_EU, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(Indexed_COB_births_total_EU, digits = 1))
+  )) +
+  theme_gla() +
+  geom_hline(yintercept = 100) +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+  scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Indexed number of children born to mothers with COB EU, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_EU_ind, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Indexed number of children born to mothers with COB EU, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+```
+
+
+
+```{r fig_London_pop_line_total_abs, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of total births over time for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_total_abs <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = total_births_all, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(total_births_all, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Number of births, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_total_abs, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Number of births, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+```{r fig_London_pop_line_total_ind, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot indexed births over time for each London borough
+  
+COB_birthsData_total_ind_Zone <- COB_birthsData_Zone %>%
+  group_by(gss_code) %>% 
+  mutate(Indexed_total_births = (total_births_all/first(total_births_all))*100) %>%
+  data.frame()
+  
+COB_lines_total_ind <- COB_birthsData_total_ind_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = Indexed_total_births, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(Indexed_total_births, digits = 1))
+  )) +
+  theme_gla() +
+  geom_hline(yintercept = 100) +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+  scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Indexed number of births, London boroughs", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_total_ind, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Indexed number of births, London boroughs<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+```
+
+
+```{r fig_London_pop_line_overseas_abs, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of COB overseas over time for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_overseas_abs <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = total_births_overseas_mothers, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(total_births_overseas_mothers, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Number of children born to mothers born overseas, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_overseas_abs, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Number of children born to mothers born overseas, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+
+```{r fig_London_pop_line_overseas_ind, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot indexed population of COB overseas over time for each London borough
+  
+COB_birthsData_overseas_ind_Zone <- COB_birthsData_Zone %>%
+  group_by(gss_code) %>% 
+  mutate(Indexed_COB_births_overseas = (total_births_overseas_mothers/first(total_births_overseas_mothers))*100) %>%
+  data.frame()
+  
+COB_lines_overseas_ind <- COB_birthsData_overseas_ind_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = Indexed_COB_births_overseas, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(Indexed_COB_births_overseas, digits = 1))
+  )) +
+  theme_gla() +
+  geom_hline(yintercept = 100) +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+  scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Indexed number of children born to mothers born overseas, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_overseas_ind, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Indexed number of children born to mothers born overseas, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+```
+
+
+```{r fig_London_COB_map_1, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+## Interactive map of % born overseas, 2022 in London
+
+
+# Import LA boundaries for England and Wales
+borough_boundaries <-
+  st_read("C:/Migration/Migration_R/DATA/Domestic/copied_from_Qdrive_20220614/geographical/LAD_DEC_2021_GB_BUC.shp", quiet = TRUE)
+
+# Match boundary data with COB data and create categories for mapping
+
+COB_births_overseas_geog <- COB_birthsData_Zone %>% 
+  filter(year == ("2022")) %>%
+  filter(grepl('E09000', gss_code)) %>%
+  left_join(borough_boundaries, by=c("gss_code"="LAD21CD")) %>%
+  mutate(PercentOverseas = total_births_overseas_mothers*100/total_births_all) %>%
+  data.frame()
+
+#summary(Rents_boroughs_indexed$Indexed_Lower_quartile)
+quantile(COB_births_overseas_geog$PercentOverseas)
+
+COB_births_overseas_geog_ed <- COB_births_overseas_geog %>% 
+  mutate(PercentOverseas_Cat = cut(PercentOverseas, breaks = c(30, 45, 55, 65, 75, 85),
+                             right=FALSE,
+                             labels = c(" 30 - 44.9 ",
+                                        " 45 - 54.9",
+                                        " 55 - 64.9",
+                                        " 65 - 74.9",
+                                        " 75 - 85"))) %>%
+  data.frame()
+catgreen5B = rev(c('#212b20', '#3d583b', '#638760', '#95b792', '#d8e4d6'))
+#(made on 19th Sep from values on page 14 of CIU guidelines 212b20, 5ea15d, d8e4d6)  
+
+COB_births_overseas_map <- COB_births_overseas_geog_ed %>%
+  ggplot()+
+  geom_point(aes(x=BNG_E, y=BNG_N, 
+                 text = paste("Borough: ", BoroughName,  
+                              "<br>% mothers born overseas: ", 
+                              format(PercentOverseas, format="f", big.mark=",", digits=2))),
+             alpha = 0) +   # alpha = 0 ensures that points are not actually plotted
+  geom_sf(aes(geometry=geometry, fill=PercentOverseas_Cat),lwd = 0.2, colour = "black")+
+  #ggla_sf()+
+  #theme_gla()+
+  theme(plot.title = element_text(size = 16, hjust = 0.5)) +
+  theme(legend.position = "right")+
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())+
+  theme(panel.background = element_blank())+
+  theme(plot.caption = element_text (hjust = 0))+
+  theme(plot.title = element_text(size = 16, hjust = 0.5)) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(), 
+        axis.text.y = element_blank(), 
+        axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())+
+  scale_fill_manual(values = catgreen5B) + 
+  labs(title= "% mothers born overseas, London, 2022", 
+       caption = paste0("Source: ONS, Chart: GLA demography")) +
+  labs(fill = "% born overseas")
+
+# ggsave (filename = (paste0(chart_dir, "COB_change_map.png")),
+#          plot = COB_births_overseas_change_map,
+#          device = "png",
+#          dpi=600,
+#          width = 9,
+#          height = 5.56,
+#          units = "in")
+
+# Interactive map using ggplotly
+
+COB_births_overseas_map_int <- ggplotly(COB_births_overseas_map, tooltip = "text") %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>% mothers born overseas, 2022<b>", 
+                     font=list(size = 15, family = "Arial")),
+         font=list(size = 14, family = "Arial", color = "black", fontface = "bold"),
+         legend=list(orientation = "v", xanchor = "center", x = 1.1, y = 0.3,
+                     title=list(text="% born overseas",
+                                font = list(family = "Arial", size = 14)),  
+                     font = list(family = "Arial", size = 14))) %>%  
+  layout(annotations = list(x = 0.05, y = -0.05, text = "Source: ONS; Chart: GLA demography", 
+                            showarrow = F, xref='paper', yref='paper', 
+                            font=list(size=14, family = "Arial")), 
+         margin = list(l = 0,r = 0,  b =40,  t = 70,  pad = 4)) 
+
+COB_births_overseas_map_int
+
+```
+
+
+```{r fig_London_COB_map_2, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+## Interactive map of percentage change in numbers born overseas between 2001 and 2022 in London
+
+# Import LA boundaries for England and Wales
+borough_boundaries <-
+  st_read("C:/Migration/Migration_R/DATA/Domestic/copied_from_Qdrive_20220614/geographical/LAD_DEC_2021_GB_BUC.shp", quiet = TRUE)
+
+# Match boundary data with COB data and create categories for mapping
+
+#summary(Rents_boroughs_indexed$Indexed_Lower_quartile)
+
+COB_births_overseas_change_geog <- COB_birthsData_overseas_ind_Zone %>% 
+  filter(year == ("2022")) %>%
+  filter(grepl('E09000', gss_code)) %>%
+  left_join(borough_boundaries, by=c("gss_code"="LAD21CD")) %>%
+  data.frame()
+
+#quantile(COB_births_overseas_change_geog$Indexed_COB_births_overseas)
+
+COB_births_overseas_change_geog_ed <- COB_births_overseas_change_geog %>% 
+  mutate(COB_Change_Cat = cut(Indexed_COB_births_overseas, breaks = c(60, 100, 125, 175, 225, 325, 700),
+                             right=FALSE,
+                             labels = c("  60 -  99.9 ",
+                                        " 100 - 124.9",
+                                        " 125 - 174.9",
+                                        " 175 - 224.9",
+                                        " 225 - 324.9", 
+                                        " 325 - 700"))) %>%
+  data.frame()
+
+catblue5 = rev(c('#00429d','#4771b2','#73a2c6','#a5d5d8','#ffbcaf'))
+catblue6 = rev(c("#252c35","#3c4e61","#57718e","#7a97b8","#a5bedb","#ffcab9"))
+#catgreen5 = c('#4a6349','#6b866a','#92a890','#becbbc','#ffbcaf',)            
+
+COB_births_overseas_change_map <- COB_births_overseas_change_geog_ed %>%
+  ggplot()+
+  geom_point(aes(x=BNG_E, y=BNG_N, 
+                 text = paste("Borough: ", BoroughName,  
+                              "<br>% change in births with mothers born overseas since 2001: ", 
+                              format(Indexed_COB_births_overseas, format="f", big.mark=",", digits=2))),
+             alpha = 0) +   # alpha = 0 ensures that points are not actually plotted
+  geom_sf(aes(geometry=geometry, fill=COB_Change_Cat),lwd = 0.2, colour = "black")+
+  #ggla_sf()+
+  #theme_gla()+
+  theme(plot.title = element_text(size = 16, hjust = 0.5)) +
+  theme(legend.position = "right")+
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())+
+  theme(panel.background = element_blank())+
+  theme(plot.caption = element_text (hjust = 0))+
+  theme(plot.title = element_text(size = 16, hjust = 0.5)) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(), 
+        axis.text.y = element_blank(), 
+        axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())+
+  scale_fill_manual(values = catblue6) + 
+  labs(title= "% change in mothers born overseas since 2001, London, 2022", 
+       caption = paste0("Source: ONS, Chart: GLA demography")) +
+  labs(fill = "% change since 2001")
+
+# ggsave (filename = (paste0(chart_dir, "COB_change_map.png")),
+#          plot = COB_births_overseas_change_map,
+#          device = "png",
+#          dpi=600,
+#          width = 9,
+#          height = 5.56,
+#          units = "in")
+
+# Interactive map using ggplotly
+
+COB_births_overseas_change_map_int <- ggplotly(COB_births_overseas_change_map, tooltip = "text") %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>% change in mothers born overseas since 2001<b>", 
+                     font=list(size = 15, family = "Arial")),
+         font=list(size = 14, family = "Arial", color = "black", fontface = "bold"),
+         legend=list(orientation = "v", xanchor = "center", x = 1.1, y = 0.3,
+                     title=list(text='% change since 2001',
+                                font = list(family = "Arial", size = 14)),  
+                     font = list(family = "Arial", size = 14))) %>%  
+  layout(annotations = list(x = 0.05, y = -0.05, text = "Source: ONS; Chart: GLA demography", 
+                            showarrow = F, xref='paper', yref='paper', 
+                            font=list(size=14, family = "Arial")), 
+         margin = list(l = 0,r = 0,  b =40,  t = 70,  pad = 4)) 
+
+COB_births_overseas_change_map_int
+
+
+
+```
