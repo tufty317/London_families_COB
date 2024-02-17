@@ -1,0 +1,327 @@
+---
+title: "Birth by Mothers' Country of Birth, 26/09/2023"
+output: 
+  html_document:
+    css: Wil_style.css
+    theme: default
+    toc: TRUE
+    toc_float: TRUE
+    number_sections: TRUE
+always_allow_html: yes
+---
+
+```{r setup1, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(zoo)
+library(data.table)
+library(tidyverse)
+library(gglaplot)
+library(ggplot2)
+library(scales)
+library(readxl)
+library(knitr)
+library(sf)
+library(sp)
+library(kableExtra)
+library(magick)
+
+library(plotly)    
+library(RColorBrewer)
+library(htmltools)
+library(prettydoc)
+library(rmdformats)
+
+# data_dir <- 'C:/Migration/Migration_R/DATA/Domestic/copied_from_Qdrive_20220614/'
+
+data_dir <- 'C:/Families/Data/'
+chart_dir <- 'C:/Families/Charts/'
+
+# Disable scientific notation
+options(scipen=999)
+
+```
+
+```{r setup_population, include=FALSE}
+
+# Population DATA for 4 year olds 
+
+boroughcodes <- read.csv("C:/Migration/Migration_R/DATA/Domestic/InnerLondon.csv") %>%   
+  data.frame
+
+input_COB_birthsData <- read.csv("C:/births_by_mothers_country_of_birth/data/births_by_mothers_country_of_birth_2001_to_2022.csv") %>%   
+  data.frame
+
+# glimpse(boroughcodes)
+
+COB_birthsData_Zone <-input_COB_birthsData %>%
+  left_join(boroughcodes, by=c("gss_code"="BoroughCode"))%>% 
+#  mutate(across(c('Year'), substr, 2, nchar(Year))) %>%
+  mutate(Inner_factor = as.factor(Inner)) %>%
+  mutate(Inner_factor= recode(Inner, "1"="Inner", "0"="Outer", "2" = "Other")) %>%
+  data.frame()
+
+```
+
+
+```{r fig_London_pop_line_Africa_abs, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of COB Africa over time for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_Africa_abs <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = overseas_mothers_africa, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(overseas_mothers_africa, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Number of children born to mothers with COB Africa, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_Africa_abs, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Number of children born to mothers with COB Africa, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+
+```{r fig_London_pop_line_Africa_ind, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot indexed population of COB Asia over time for each London borough
+  
+COB_birthsData_Africa_ind_Zone <- COB_birthsData_Zone %>%
+  group_by(gss_code) %>% 
+  mutate(Indexed_COB_births_Africa = (overseas_mothers_africa/first(overseas_mothers_africa))*100) %>%
+  data.frame()
+  
+COB_lines_Africa_ind <- COB_birthsData_Africa_ind_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = Indexed_COB_births_Africa, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(Indexed_COB_births_Africa, digits = 1))
+  )) +
+  theme_gla() +
+  geom_hline(yintercept = 100) +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+  scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Indexed number of children born to mothers with COB Africa, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_Africa_ind, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Indexed number of children born to mothers with COB Africa, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+```
+
+
+
+```{r fig_London_pop_line_Asia_abs, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of COB Asia over time for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_Asia_abs <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = overseas_mothers_asia, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(overseas_mothers_asia, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Number of children born to mothers with COB Asia, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_Asia_abs, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Number of children born to mothers with COB Asia, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+
+
+
+```{r fig_London_pop_line_Asia_ind, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot indexed population of COB Asia over time for each London borough
+  
+COB_birthsData_Asia_ind_Zone <- COB_birthsData_Zone %>%
+  group_by(gss_code) %>% 
+  mutate(Indexed_COB_births_Asia = (overseas_mothers_asia/first(overseas_mothers_asia))*100) %>%
+  data.frame()
+  
+COB_lines_Asia_ind <- COB_birthsData_Asia_ind_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = Indexed_COB_births_Asia, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(Indexed_COB_births_Asia, digits = 1))
+  )) +
+  theme_gla() +
+  geom_hline(yintercept = 100) +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+  scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Indexed number of children born to mothers with COB Asia, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_Asia_ind, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Indexed number of children born to mothers with COB Asia, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+```
+
+
+
+
+```{r fig_London_pop_line_EU_abs, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of COB EU over time for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_EU_abs <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = overseas_mothers_total_EU, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(overseas_mothers_total_EU, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Number of children born to mothers with COB EU, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_EU_abs, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Number of children born to mothers with COB EU, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+
+
+```{r fig_London_pop_line_EU_ind, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot indexed population of COB EU over time for each London borough
+  
+COB_birthsData_EU_ind_Zone <- COB_birthsData_Zone %>%
+  group_by(gss_code) %>% 
+  mutate(Indexed_COB_births_total_EU = (overseas_mothers_total_EU/first(overseas_mothers_total_EU))*100) %>%
+  data.frame()
+  
+COB_lines_EU_ind <- COB_birthsData_EU_ind_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = Indexed_COB_births_total_EU, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(Indexed_COB_births_total_EU, digits = 1))
+  )) +
+  theme_gla() +
+  geom_hline(yintercept = 100) +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+  scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Indexed number of children born to mothers with COB EU, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_EU_ind, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Indexed number of children born to mothers with COB EU, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+```
+
+
+
+```{r fig_London_pop_line_total_abs, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot population of total births over time for each London borough
+
+catcolour2 = rev(c('#e41a1c','#377eb8'))
+
+COB_lines_total_abs <- COB_birthsData_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = total_births_all, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(total_births_all, digits = 0))
+  )) +
+  theme_gla() +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+ scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Number of births, London", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_total_abs, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Number of births, London<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+
+
+```
+
+```{r fig_London_pop_line_total_ind, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot indexed births over time for each London borough
+  
+COB_birthsData_total_ind_Zone <- COB_birthsData_Zone %>%
+  group_by(gss_code) %>% 
+  mutate(Indexed_total_births = (total_births_all/first(total_births_all))*100) %>%
+  data.frame()
+  
+COB_lines_total_ind <- COB_birthsData_total_ind_Zone %>%
+  filter(type == "London Borough") %>%
+  ggplot(aes(x = year, y = Indexed_total_births, group = gss_code, color = Inner_factor
+             , text = paste("Year  :", year,
+                            "<br>Borough : ", usual_residence_of_mother,
+                            "<br>Number :", round(Indexed_total_births, digits = 1))
+  )) +
+  theme_gla() +
+  geom_hline(yintercept = 100) +
+  geom_line() + 
+ scale_color_manual(name='Zone:', values = catcolour2) +
+  scale_x_continuous(limits = c(2001, 2022), breaks = seq(2001, 2026, by = 5)) +
+  labs(title= "Indexed number of births, London boroughs", 
+       caption = paste0("Source: ONS, Chart: GLA demography"))
+
+ggplotly(COB_lines_total_ind, tooltip = "text") %>%
+  style(hoverlabel = list(bgcolor = "white")) %>%
+  layout(title= list(x = 0.05,
+                     text = "<b>Indexed number of births, London boroughs<b>", 
+                     font=list(size = 15, family = "Arial")))
+
+```

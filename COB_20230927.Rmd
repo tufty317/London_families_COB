@@ -67,6 +67,23 @@ COB_birthsData_Zone <-input_COB_birthsData %>%
 ```
 
 
+```{r calcs_population, include=FALSE}
+
+## Calculations on 8th Feb for report
+
+
+# calculate totals for 2022 by Zone
+summ_2022data <- COB_birthsData_Zone  %>% 
+  filter(year ==2022) %>%
+  group_by(Inner_factor) %>% 
+  select_if(is.numeric) %>% 
+  summarise_each(funs(sum)) %>%
+ data.frame() 
+
+
+
+```
+
 ```{r fig_London_pop_line_Africa_abs, fig.height = 5.56, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
 
 # Plot population of COB Africa over time for each London borough
